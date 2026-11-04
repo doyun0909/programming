@@ -49,8 +49,7 @@ T0_C = T0_K - 273.15  # 마찰열 정체점 온도 (°C)
 k_dense = 30.0  # 치밀한 Al2O3 열전도율 (W/m·K)
 k_eff = k_dense * ((1 - porosity) / (1 + 1.5 * porosity))
 
-# 4. 내열 및 피막 열 응력 손상 지수 (현실적 완만 감점 튜닝)
-# 로그 스케일 및 감쇄 계수를 도입하여 점수가 0점으로 급락하는 현상 완화
+# 4. 내열 및 피막 열 응력 손상 지수 (로그 감쇄 스케일링)
 heat_stress = (k_eff / np.sqrt(thickness)) * (T0_C / 500.0)
 safety_score = 100.0 * np.exp(-0.15 * (heat_stress ** 0.85))
 safety_score = max(5.0, min(100.0, safety_score))
@@ -82,64 +81,4 @@ with col2:
 st.divider()
 
 # ------------------- 3. 그래프 시각화 영역 -------------------
-st.subheader("3. 학술 정밀 시각화 분석 (Graph Visualizations)")
-
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.5))
-
-# [좌측 그래프] 양극산화막 나노기공 단면 시각화
-ax1.set_facecolor('#1e1e1e')
-film_h = thickness
-ax1.axhspan(0, film_h, color='#3b82f6', alpha=0.7, label='Anodized Oxide Layer')
-ax1.axhspan(-film_h*0.3, 0, color='#9ca3af', alpha=0.9, label='Al Substrate')
-
-# 기공 구멍 표현
-pore_count = 7
-x_coords = np.linspace(10, 90, pore_count)
-for x in x_coords:
-    ax1.fill_between([x - (D_pore/D_cell)*5, x + (D_pore/D_cell)*5], 0, film_h, color='#1e1e1e')
-
-ax1.set_xlim(0, 100)
-ax1.set_ylim(-film_h*0.3, film_h*1.2)
-ax1.set_title("Nanopore Cross-Section Model", fontsize=12, fontweight='bold')
-ax1.set_ylabel("Depth / Thickness (µm)")
-ax1.set_xlabel("Surface Width (nm scale)")
-ax1.legend(loc='upper right', fontsize=8)
-ax1.grid(True, linestyle='--', alpha=0.3)
-
-# [우측 그래프] 속도(Mach)에 따른 마찰열 온도 곡선 및 현재 위치
-mach_range = np.linspace(1.0, 6.0, 50)
-T0_range = (T_ambient * (1 + 0.2 * (mach_range ** 2))) - 273.15
-
-ax2.plot(mach_range, T0_range, color='#ef4444', linewidth=2.5, label='Aerodynamic Heat Curve')
-ax2.scatter([mach], [T0_C], color='#yellow', s=120, zorder=5, label=f'Current Flight (M={mach})')
-
-ax2.set_title("Stagnation Temperature vs Mach Number", fontsize=12, fontweight='bold')
-ax2.set_xlabel("Flight Speed (Mach)")
-ax2.set_ylabel("Stagnation Temp T0 (°C)")
-ax2.legend(loc='upper left', fontsize=8)
-ax2.grid(True, linestyle='--', alpha=0.5)
-
-st.pyplot(fig)
-
-st.divider()
-
-# 4. 데이터 테이블 요약
-st.subheader("4. 학술 수식 기반 주요 정량 데이터")
-summary_data = {
-    "물리화학 파라미터": [
-        "양극산화 인가 전압 (V)", "전해질 반응 온도 (°C)", "비행 마하 수 (Mach)",
-        "나노 기공 크기 (nm)", "피막 다공도 (%)", "대기권 마찰열 온도 (°C)",
-        "유효 열전도율 (W/m·K)", "내열 구조 안전 점수"
-    ],
-    "산출값 및 단위": [
-        f"{voltage} V", f"{temp_c} °C", f"{mach} M",
-        f"{D_pore:.1f} nm", f"{porosity*100:.1f} %", f"{T0_C:.1f} °C",
-        f"{k_eff:.2f} W/m·K", f"{safety_score:.1f} 점"
-    ],
-    "적용된 학술 공식/원리": [
-        "전원공급장치 공정 조건", "전해액 용해 속도 결정", "비행 유동 조건",
-        "Keller-Hunter-Robinson Model", "Hexagonal Cell Packing", "Stagnation Temperature (T0)",
-        "Maxwell-Eucken Porous Model", "Exponential Decay Safety Scaling"
-    ]
-}
-st.table(summary_data)
+st.subheader("3. 학술 정밀 시
