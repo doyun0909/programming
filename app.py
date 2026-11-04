@@ -1,5 +1,7 @@
+
 import streamlit as st
 import numpy as np
+import pandas as pd
 
 st.set_page_config(page_title="Al 양극산화 피막 시뮬레이터", layout="wide")
 
@@ -12,12 +14,12 @@ col1, col2 = st.columns([1, 1.2])
 
 with col1:
     st.subheader("1. 공정 및 대기권 비행 파라미터")
-    
+
     st.markdown("**[화학 공정 변수: 양극산화]**")
     voltage = st.slider("양극산화 인가 전압 (V)", min_value=10.0, max_value=60.0, value=20.0, step=1.0)
     temp_c = st.slider("전해질 반응 온도 (C)", min_value=0.0, max_value=40.0, value=15.0, step=1.0)
     time_min = st.slider("양극산화 처리 시간 (min)", min_value=10, max_value=120, value=40, step=5)
-    
+
     st.markdown("**[물리 비행 변수: Aerodynamic Heating]**")
     mach = st.slider("비행 속도 (Mach Number)", min_value=1.0, max_value=6.0, value=3.5, step=0.1)
 
@@ -45,20 +47,21 @@ porosity_percent = porosity * 100.0
 
 with col2:
     st.subheader("2. 미세구조 및 열역학 해석 결과")
-    
+
     res_col1, res_col2 = st.columns(2)
+
     with res_col1:
         st.metric("셀 직경 (Cell Size, Dc)", f"{D_cell:.1f} nm")
         st.metric("기공 직경 (Pore Size, Dp)", f"{D_pore:.1f} nm")
         st.metric("산화막 다공도 (Porosity)", f"{porosity_percent:.1f} %")
-    
+
     with res_col2:
         st.metric("산화막 두께 (Thickness)", f"{thickness:.1f} um")
         st.metric("공력 가열 온도 (T0)", f"{T0_C:.0f} C")
         st.metric("유효 열전도율 (keff)", f"{k_eff:.2f} W/mK")
 
     st.markdown(f"### 내열 구조 안전성 점수: **{safety_score:.1f} / 100점**")
-    
+
     if safety_score >= 80:
         st.success("✅ **[안전]** 적정 기공률과 피막 두께로 공력 가열 열 전달을 효과적으로 차단함.")
     elif safety_score >= 50:
@@ -68,22 +71,54 @@ with col2:
 
 st.divider()
 
-# 시각화 영역 (Streamlit 전용 차트)
+# 시각화 영역 (Streamlit 그래프 출력 안정화)
 st.subheader("3. 비행 속도별 마찰열 정체점 온도 프로파일")
 
 mach_range = np.linspace(1.0, 6.0, 50)
 T0_range = (T_ambient * (1 + 0.2 * (mach_range ** 2))) - 273.15
 
-chart_data = {"Mach Number": mach_range, "Stagnation Temp (C)": T0_range}
-st.line_chart(chart_data, x="Mach Number", y="Stagnation Temp (C)")
+# Pandas DataFrame으로 그래프 데이터 구성
+chart_data = pd.DataFrame({
+    "Mach Number": mach_range,
+    "Stagnation Temp (C)": T0_range
+})
+
+# Mach Number를 X축 인덱스로 지정하여 그래프 출력
+chart_data = chart_data.set_index("Mach Number")
+
+st.line_chart(
+    chart_data,
+    use_container_width=True
+)
+
 st.caption(f"📍 현재 설정 비행 속도: Mach {mach:.1f} | 마찰열 온도: {T0_C:.1f} °C")
 
 st.divider()
 
 # 요약 표
 st.subheader("4. 주요 정량 데이터 요약")
+
 summary_data = {
-    "파라미터": ["인가 전압", "반응 온도", "비행 마하 수", "기공 크기", "피막 다공도", "마찰열 온도", "유효 열전도율", "안전 점수"],
-    "산출값": [f"{voltage} V", f"{temp_c} C", f"{mach} M", f"{D_pore:.1f} nm", f"{porosity_percent:.1f} %", f"{T0_C:.1f} C", f"{k_eff:.2f} W/mK", f"{safety_score:.1f} 점"]
+    "파라미터": [
+        "인가 전압",
+        "반응 온도",
+        "비행 마하 수",
+        "기공 크기",
+        "피막 다공도",
+        "마찰열 온도",
+        "유효 열전도율",
+        "안전 점수"
+    ],
+    "산출값": [
+        f"{voltage} V",
+        f"{temp_c} C",
+        f"{mach} M",
+        f"{D_pore:.1f} nm",
+        f"{porosity_percent:.1f} %",
+        f"{T0_C:.1f} C",
+        f"{k_eff:.2f} W/mK",
+        f"{safety_score:.1f} 점"
+    ]
 }
+
 st.table(summary_data)
