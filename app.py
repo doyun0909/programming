@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="항공우주용 알루미늄 양극산화 피막 내구성 시뮬레이터", layout="wide")
+st.set_page_config(page_title="Al 양극산화 피막 시뮬레이터", layout="wide")
 
 st.title("🚀 항공우주용 Al 양극산화막 나노기공 구조 및 공력가열 내열성 시뮬레이터")
 st.caption("20603 김도윤 | Keller-Hunter-Robinson 나노셀 모델 및 유체-열전도 융합 심화 시뮬레이션")
@@ -16,14 +16,14 @@ with col1:
     
     st.markdown("**[화학 공정 변수: 양극산화]**")
     voltage = st.slider("양극산화 인가 전압 (V)", min_value=10.0, max_value=60.0, value=20.0, step=1.0)
-    temp_c = st.slider("전해질 반응 온도 (°C)", min_value=0.0, max_value=40.0, value=15.0, step=1.0)
+    temp_c = st.slider("전해질 반응 온도 (C)", min_value=0.0, max_value=40.0, value=15.0, step=1.0)
     time_min = st.slider("양극산화 처리 시간 (min)", min_value=10, max_value=120, value=40, step=5)
     
     st.markdown("**[물리 비행 변수: Aerodynamic Heating]**")
     mach = st.slider("비행 속도 (Mach Number)", min_value=1.0, max_value=6.0, value=3.5, step=0.1)
 
     if st.button("⚠️ 입력 데이터 바운더리 예외 처리 검증"):
-        st.warning("⚠️ [예외 처리 시스템 가동] 음수 입력 및 비현실적 무한대 분모 0 진입(ZeroDivision) 자동 보정 완료.")
+        st.warning("⚠️ [예외 처리 시스템 가동] 음수 입력 및 비현실적 무한대 분모 0 진입 자동 보정 완료.")
 
 # 물리화학 수식 연산 엔진
 D_cell = 2.5 * voltage
@@ -48,6 +48,8 @@ heat_stress = (k_eff / np.sqrt(thickness)) * (T0_C / 500.0)
 safety_score = 100.0 * np.exp(-0.15 * (heat_stress ** 0.85))
 safety_score = max(5.0, min(100.0, safety_score))
 
+porosity_percent = porosity * 100.0
+
 with col2:
     st.subheader("2. 미세구조 및 열역학 해석 결과")
     
@@ -55,4 +57,40 @@ with col2:
     with res_col1:
         st.metric("셀 직경 (Cell Size, Dc)", f"{D_cell:.1f} nm")
         st.metric("기공 직경 (Pore Size, Dp)", f"{D_pore:.1f} nm")
-        st.metric("산화막 다공도 (Porosity)", f"{porosity*
+        st.metric("산화막 다공도 (Porosity)", f"{porosity_percent:.1f} %")
+    
+    with res_col2:
+        st.metric("산화막 두께 (Thickness)", f"{thickness:.1f} um")
+        st.metric("공력 가열 온도 (T0)", f"{T0_C:.0f} C")
+        st.metric("유효 열전도율 (keff)", f"{k_eff:.2f} W/mK")
+
+    st.markdown(f"### 내열 구조 안전성 점수: **{safety_score:.1f} / 100점**")
+    
+    if safety_score >= 80:
+        st.success("✅ **[안전]** 적정 기공률과 피막 두께로 공력 가열 열 전달을 효과적으로 차단함.")
+    elif safety_score >= 50:
+        st.warning("⚠️ **[경고]** 높은 다공도로 인해 열전도 저항 약화. 열 응력 균열 주의 필요.")
+    else:
+        st.error("❌ **[위험]** 과도한 기공 형성 및 피막 박리로 인해 알루미늄 모재 용융 및 손상 위협!")
+
+st.divider()
+
+# 시각화 영역
+st.subheader("3. 학술 정밀 시각화 분석")
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.5))
+
+ax1.set_facecolor('#1e1e1e')
+film_h = thickness
+ax1.axhspan(0, film_h, color='#3b82f6', alpha=0.7, label='Anodized Oxide Layer')
+ax1.axhspan(-film_h*0.3, 0, color='#9ca3af', alpha=0.9, label='Al Substrate')
+
+pore_count = 7
+x_coords = np.linspace(10, 90, pore_count)
+for x in x_coords:
+    ax1.fill_between([x - (D_pore/D_cell)*5, x + (D_pore/D_cell)*5], 0, film_h, color='#1e1e1e')
+
+ax1.set_xlim(0, 100)
+ax1.set_ylim(-film_h*0.3, film_h*1.2)
+ax1.set_title("Nanopore Cross-Section Model", fontsize=12, fontweight='bold')
+ax1
