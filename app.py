@@ -24,29 +24,23 @@ with col1:
     if st.button("⚠️ 입력 데이터 바운더리 예외 처리 검증"):
         st.warning("⚠️ [예외 처리 시스템 가동] 음수 입력 및 비현실적 무한대 분모 0 진입 자동 보정 완료.")
 
-# 물리화학 수식 연산 엔진
+# 수식 연산 엔진
 D_cell = 2.5 * voltage
 D_pore_base = 0.35 * D_cell
-D_pore = D_pore_base * (1.0 + 0.012 * temp_c)
-D_pore = min(D_pore, D_cell * 0.8)
+D_pore = min(D_pore_base * (1.0 + 0.012 * temp_c), D_cell * 0.8)
 
 porosity = (np.pi / (2 * np.sqrt(3))) * ((D_pore / D_cell) ** 2)
-
-thickness = (voltage * 0.45 + time_min * 0.3) * (1.0 - 0.005 * temp_c)
-thickness = max(2.0, thickness)
+thickness = max(2.0, (voltage * 0.45 + time_min * 0.3) * (1.0 - 0.005 * temp_c))
 
 T_ambient = 220.0
-gamma = 1.4
-T0_K = T_ambient * (1 + ((gamma - 1) / 2) * (mach ** 2))
+T0_K = T_ambient * (1 + 0.2 * (mach ** 2))
 T0_C = T0_K - 273.15
 
 k_dense = 30.0
 k_eff = k_dense * ((1 - porosity) / (1 + 1.5 * porosity))
 
 heat_stress = (k_eff / np.sqrt(thickness)) * (T0_C / 500.0)
-safety_score = 100.0 * np.exp(-0.15 * (heat_stress ** 0.85))
-safety_score = max(5.0, min(100.0, safety_score))
-
+safety_score = max(5.0, min(100.0, 100.0 * np.exp(-0.15 * (heat_stress ** 0.85))))
 porosity_percent = porosity * 100.0
 
 with col2:
@@ -74,32 +68,22 @@ with col2:
 
 st.divider()
 
-# 시각화 영역 (Streamlit 전용 차트 엔진)
-st.subheader("3. 학술 정밀 시각화 분석 (비행 속도별 마찰열 정체점 온도 프로파일)")
+# 시각화 영역 (Streamlit 전용 차트)
+st.subheader("3. 비행 속도별 마찰열 정체점 온도 프로파일")
 
 mach_range = np.linspace(1.0, 6.0, 50)
 T0_range = (T_ambient * (1 + 0.2 * (mach_range ** 2))) - 273.15
 
-# Streamlit Native Line Chart 데이터 생성
 chart_data = {"Mach Number": mach_range, "Stagnation Temp (C)": T0_range}
 st.line_chart(chart_data, x="Mach Number", y="Stagnation Temp (C)")
-st.caption(f"📍 현재 설정된 비행 속도: Mach {mach:.1f} | 발생 마찰열 온도: {T0_C:.1f} °C")
+st.caption(f"📍 현재 설정 비행 속도: Mach {mach:.1f} | 마찰열 온도: {T0_C:.1f} °C")
 
 st.divider()
 
-st.subheader("4. 학술 수식 기반 주요 정량 데이터")
+# 요약 표
+st.subheader("4. 주요 정량 데이터 요약")
 summary_data = {
-    "물리화학 파라미터": [
-        "양극산화 인가 전압 (V)", "전해질 반응 온도 (C)", "비행 마하 수 (Mach)",
-        "나노 기공 크기 (nm)", "피막 다공도 (%)", "대기권 마찰열 온도 (C)",
-        "유효 열전도율 (W/mK)", "내열 구조 안전 점수"
-    ],
-    "산출값 및 단위": [
-        f"{voltage} V", f"{temp_c} C", f"{mach} M",
-        f"{D_pore:.1f} nm", f"{porosity_percent:.1f} %", f"{T0_C:.1f} C",
-        f"{k_eff:.2f} W/mK", f"{safety_score:.1f} 점"
-    ],
-    "적용된 학술 공식 및 원리": [
-        "전원공급장치 공정 조건", "전해액 용해 속도 결정", "비행 유동 조건",
-        "Keller-Hunter-Robinson Model", "Hexagonal Cell Packing", "Stagnation Temperature (T0)",
-        "Maxwell-Eucken Porous Model", "Exponential Decay Safety Scaling"
+    "파라미터": ["인가 전압", "반응 온도", "비행 마하 수", "기공 크기", "피막 다공도", "마찰열 온도", "유효 열전도율", "안전 점수"],
+    "산출값": [f"{voltage} V", f"{temp_c} C", f"{mach} M", f"{D_pore:.1f} nm", f"{porosity_percent:.1f} %", f"{T0_C:.1f} C", f"{k_eff:.2f} W/mK", f"{safety_score:.1f} 점"]
+}
+st.table(summary_data)
