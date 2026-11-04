@@ -1,6 +1,5 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Al 양극산화 피막 시뮬레이터", layout="wide")
 
@@ -75,22 +74,32 @@ with col2:
 
 st.divider()
 
-# 시각화 영역
-st.subheader("3. 학술 정밀 시각화 분석")
+# 시각화 영역 (Streamlit 전용 차트 엔진)
+st.subheader("3. 학술 정밀 시각화 분석 (비행 속도별 마찰열 정체점 온도 프로파일)")
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.5))
+mach_range = np.linspace(1.0, 6.0, 50)
+T0_range = (T_ambient * (1 + 0.2 * (mach_range ** 2))) - 273.15
 
-ax1.set_facecolor('#1e1e1e')
-film_h = thickness
-ax1.axhspan(0, film_h, color='#3b82f6', alpha=0.7, label='Anodized Oxide Layer')
-ax1.axhspan(-film_h*0.3, 0, color='#9ca3af', alpha=0.9, label='Al Substrate')
+# Streamlit Native Line Chart 데이터 생성
+chart_data = {"Mach Number": mach_range, "Stagnation Temp (C)": T0_range}
+st.line_chart(chart_data, x="Mach Number", y="Stagnation Temp (C)")
+st.caption(f"📍 현재 설정된 비행 속도: Mach {mach:.1f} | 발생 마찰열 온도: {T0_C:.1f} °C")
 
-pore_count = 7
-x_coords = np.linspace(10, 90, pore_count)
-for x in x_coords:
-    ax1.fill_between([x - (D_pore/D_cell)*5, x + (D_pore/D_cell)*5], 0, film_h, color='#1e1e1e')
+st.divider()
 
-ax1.set_xlim(0, 100)
-ax1.set_ylim(-film_h*0.3, film_h*1.2)
-ax1.set_title("Nanopore Cross-Section Model", fontsize=12, fontweight='bold')
-ax1
+st.subheader("4. 학술 수식 기반 주요 정량 데이터")
+summary_data = {
+    "물리화학 파라미터": [
+        "양극산화 인가 전압 (V)", "전해질 반응 온도 (C)", "비행 마하 수 (Mach)",
+        "나노 기공 크기 (nm)", "피막 다공도 (%)", "대기권 마찰열 온도 (C)",
+        "유효 열전도율 (W/mK)", "내열 구조 안전 점수"
+    ],
+    "산출값 및 단위": [
+        f"{voltage} V", f"{temp_c} C", f"{mach} M",
+        f"{D_pore:.1f} nm", f"{porosity_percent:.1f} %", f"{T0_C:.1f} C",
+        f"{k_eff:.2f} W/mK", f"{safety_score:.1f} 점"
+    ],
+    "적용된 학술 공식 및 원리": [
+        "전원공급장치 공정 조건", "전해액 용해 속도 결정", "비행 유동 조건",
+        "Keller-Hunter-Robinson Model", "Hexagonal Cell Packing", "Stagnation Temperature (T0)",
+        "Maxwell-Eucken Porous Model", "Exponential Decay Safety Scaling"
