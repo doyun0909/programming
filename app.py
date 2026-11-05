@@ -31,10 +31,6 @@ with col1:
 # --------------------------------------------------
 
 # 1. 양극산화 나노기공 구조
-# 문헌의 대표적인 경험적 비례 관계
-# 셀 간격: 약 2.5 nm/V
-# 기공 직경: 약 0.9 nm/V
-# 전해질 및 공정 조건에 따라 실제 값은 달라질 수 있음
 
 D_cell = 2.5 * voltage
 D_pore = 0.9 * voltage
@@ -47,18 +43,13 @@ porosity = (
 porosity_percent = porosity * 100.0
 
 # 2. 산화알루미늄 장벽층 두께
-# 장벽형 산화막 두께의 대표적인 비례 관계
-# 약 1.0~1.4 nm/V 범위 중 1.2 nm/V 사용
-# 전체 다공성 산화막 두께가 아닌 장벽층의 이론적 추정값
 
 barrier_thickness_nm = 1.2 * voltage
-thickness = barrier_thickness_nm / 1000.0  # um 단위 변환
+thickness = barrier_thickness_nm / 1000.0
 
 # 3. 공력가열 정체온도
-# 이상기체, 공기 비열비 gamma = 1.4 가정
-# T0 = T∞ * (1 + (gamma-1)/2 * M²)
 
-T_ambient = 220.0  # 외부 대기 온도 (K)
+T_ambient = 220.0
 gamma = 1.4
 
 T0_K = T_ambient * (
@@ -67,22 +58,61 @@ T0_K = T_ambient * (
 T0_C = T0_K - 273.15
 
 # 4. 양극산화 알루미나의 열전도도
-# 문헌 측정 범위:
-# 황산 전해질: 0.53~1.01 W/mK
-# 옥살산 전해질: 1.31~1.62 W/mK
-# 전해질을 별도로 선택하지 않으므로 문헌 전체 범위 표시
-# 대표 비교값은 두 범위의 바깥쪽 평균이 아닌 전체 범위의 중간값으로 설정
 
 k_min = 0.53
 k_max = 1.62
 k_eff = (k_min + k_max) / 2
 
 # 5. 장벽층의 단위 면적당 열저항
-# R'' = d / k
-# d는 m 단위로 변환
 
 thickness_m = barrier_thickness_nm * 1e-9
 thermal_resistance = thickness_m / k_eff
+
+# --------------------------------------------------
+# 6. 종합 안정성 점수 계산 엔진
+# --------------------------------------------------
+
+# (1) 공력가열 온도 평가 (70%)
+# 참고 평가 구간: 0~500°C
+
+thermal_score = max(
+    0,
+    min(100, 100 * (1 - max(0, T0_C) / 500))
+)
+
+# (2) 산화막 다공도 평가 (30%)
+# 참고 평가 구간: 5~20%
+
+if 5 <= porosity_percent <= 20:
+    porosity_score = 100
+else:
+    porosity_score = max(
+        0,
+        100 - min(
+            abs(porosity_percent - 12.5) - 7.5,
+            20
+        ) * 5
+    )
+
+# (3) 종합 안정성 점수
+
+stability_score = (
+    thermal_score * 0.7
+    + porosity_score * 0.3
+)
+
+stability_score = round(stability_score, 1)
+
+# (4) 점수 등급
+
+if stability_score >= 80:
+    stability_grade = "우수"
+elif stability_score >= 60:
+    stability_grade = "양호"
+elif stability_score >= 40:
+    stability_grade = "보통"
+else:
+    stability_grade = "낮음"
 
 # --------------------------------------------------
 # 결과 출력
@@ -123,13 +153,144 @@ with col2:
         "전해질별 실험 자료 없이 임의의 온도 보정 계수를 적용하지 않았습니다."
     )
 
+    st.divider()
+
+    # --------------------------------------------------
+    # 7. 종합 안정성 평가 결과
+    # --------------------------------------------------
+
+    st.subheader("3. 종합 안정성 평가")
+
+    score_col1, score_col2 = st.columns([1.5, 1])
+
+    with score_col1:
+        st.metric(
+            "산화막 구조 및 열적 안정성 점수",
+            f"{stability_score:.1f} / 100점"
+        )
+
+    with score_col2:
+        st.metric(
+            "종합 평가 등급",
+            stability_grade
+        )
+
+    st.progress(stability_score / 100)
+
+    st.caption(
+        f"열적 평가: {thermal_score:.1f}점 | "
+        f"다공도 평가: {porosity_score:.1f}점"
+    )
+
+    # 점수 산정 기준 더보기
+
+    with st.expander("📖 안정성 점수 산정 기준 더보기"):
+
+        st.markdown("### ① 공력가열 온도 평가 (70%)")
+
+        st.write(
+            "비행 중 공력가열로 발생하는 정체온도를 기준으로 "
+            "열적 조건을 평가합니다."
+        )
+
+        st.latex(
+            r"S_T = 100 \times "
+            r"\left(1-\frac{\max(0,T_0)}{500}\right)"
+        )
+
+        st.write("""
+        - 정체온도 0°C 이하: 100점
+        - 정체온도 500°C 이상: 0점
+        - 0~500°C: 온도 상승에 따라 선형적으로 점수 감소
+        """)
+
+        st.divider()
+
+        st.markdown("### ② 산화막 다공도 평가 (30%)")
+
+        st.write(
+            "양극산화 피막의 기공률을 기준으로 "
+            "설정된 참고 평가 구간과의 일치도를 평가합니다."
+        )
+
+        st.latex(
+            r"S_P = 100 \quad (5\% \leq P \leq 20\%)"
+        )
+
+        st.write("""
+        - 다공도 5~20%: 100점
+        - 해당 범위를 벗어나면 기준 구간에서 멀어질수록 점수 감소
+        - 다공도 5~20%는 이 시뮬레이터에서 설정한 참고 평가 구간입니다.
+        """)
+
+        st.divider()
+
+        st.markdown("### ③ 종합 안정성 점수 계산")
+
+        st.latex(
+            r"S = 0.7S_T + 0.3S_P"
+        )
+
+        st.write("""
+        | 평가 항목 | 가중치 |
+        |---|---:|
+        | 공력가열 온도 평가 | 70% |
+        | 산화막 다공도 평가 | 30% |
+        | 합계 | 100% |
+        """)
+
+        st.divider()
+
+        st.markdown("### ④ 점수별 평가 등급")
+
+        grade_data = pd.DataFrame({
+            "점수 범위": [
+                "80~100점",
+                "60~79.9점",
+                "40~59.9점",
+                "0~39.9점"
+            ],
+            "평가 등급": [
+                "우수",
+                "양호",
+                "보통",
+                "낮음"
+            ],
+            "의미": [
+                "설정된 평가 기준에서 높은 점수",
+                "설정된 평가 기준에서 양호한 점수",
+                "설정된 평가 기준에서 중간 수준",
+                "설정된 평가 기준에서 낮은 점수"
+            ]
+        })
+
+        st.table(grade_data)
+
+        st.divider()
+
+        st.markdown("### ⑤ 평가 지표의 한계")
+
+        st.warning(
+            "본 안정성 점수는 교육 및 시뮬레이션을 위한 "
+            "모델 기반 상대 평가 지표입니다. "
+            "실제 항공우주 부품의 구조적 안정성, "
+            "열충격 저항성 또는 내열 안전성을 "
+            "직접 인증하거나 보증하지 않습니다."
+        )
+
+        st.caption(
+            "실제 안정성 검증에는 산화막의 접착력, "
+            "열팽창 차이, 열충격, 기계적 강도, "
+            "실제 온도별 재료 물성 및 실험 데이터가 추가로 필요합니다."
+        )
+
 st.divider()
 
 # --------------------------------------------------
 # 시각화 영역
 # --------------------------------------------------
 
-st.subheader("3. 비행 속도별 마찰열 정체점 온도 프로파일")
+st.subheader("4. 비행 속도별 마찰열 정체점 온도 프로파일")
 
 mach_range = np.linspace(1.0, 6.0, 50)
 
@@ -161,7 +322,7 @@ st.divider()
 # 요약 표
 # --------------------------------------------------
 
-st.subheader("4. 주요 정량 데이터 요약")
+st.subheader("5. 주요 정량 데이터 요약")
 
 summary_data = {
     "파라미터": [
@@ -172,7 +333,11 @@ summary_data = {
         "피막 다공도",
         "정체온도",
         "대표 열전도율",
-        "장벽층 열저항"
+        "장벽층 열저항",
+        "열적 평가 점수",
+        "다공도 평가 점수",
+        "종합 안정성 점수",
+        "안정성 평가 등급"
     ],
     "산출값": [
         f"{voltage} V",
@@ -182,8 +347,21 @@ summary_data = {
         f"{porosity_percent:.1f} %",
         f"{T0_C:.1f} C",
         f"{k_eff:.2f} W/mK",
-        f"{thermal_resistance:.2e} m²K/W"
+        f"{thermal_resistance:.2e} m²K/W",
+        f"{thermal_score:.1f} 점",
+        f"{porosity_score:.1f} 점",
+        f"{stability_score:.1f} 점",
+        stability_grade
     ]
 }
 
 st.table(summary_data)
+
+st.divider()
+
+st.caption(
+    "본 프로그램은 Keller-Hunter-Robinson 나노셀 구조의 "
+    "기하학적 관계와 이상기체 정체온도 관계를 참고한 "
+    "교육용 융합 시뮬레이션입니다. "
+    "실제 실험값과 항공우주 부품의 인증 결과를 대체하지 않습니다."
+)
